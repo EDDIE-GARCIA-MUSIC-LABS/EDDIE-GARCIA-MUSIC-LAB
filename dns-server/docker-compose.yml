@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # Pi-hole DNS Server (100% FREE)
+  pihole:
+    image: pihole/pihole:latest
+    container_name: eddie-music-dns
+    hostname: music-lab-dns
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "67:67/udp"
+      - "80:80/tcp"
+      - "443:443/tcp"
+    environment:
+      TZ: 'America/Phoenix'
+      WEBPASSWORD: 'EddieMusic2024!'
+      PIHOLE_INTERFACE: 'eth0'
+      DHCP_ACTIVE: 'true'
+      DHCP_START: '192.168.1.100'
+      DHCP_END: '192.168.1.200'
+      DHCP_ROUTER: '192.168.1.1'
+      DHCP_LEASE_TIME: '24'
+      PIHOLE_DNS_: '1.1.1.1;8.8.8.8'
+    volumes:
+      - pihole_config:/etc/pihole
+      - pihole_dnsmasq:/etc/dnsmasq.d
+      - ./blocklists.txt:/etc/pihole/adlists.txt:ro
+    restart: unless-stopped
+    networks:
+      - music-lab-net
+
+  # CoreDNS (Lightweight Alternative)
+  coredns:
+    image: coredns/coredns:latest
+    container_name: eddie-music-coredns
+    ports:
+      - "5353:53/tcp"
+      - "5353:53/udp"
+    volumes:
+      - ./coredns/Corefile:/root/Corefile:ro
+      - ./coredns/db.music-lab.local:/root/db.music-lab.local:ro
+    command: -conf /root/Corefile
+    restart: unless-stopped
+    networks:
+      - music-lab-net
+
+  # Dnsmasq (Ultra-Lightweight Option)
+  dnsmasq:
+    image: jpillora/dnsmasq:latest
+    container_name: eddie-music-dnsmasq
+    ports:
+      - "6353:53/tcp"
+      - "6353:53/udp"
+    volumes:
+      - ./dnsmasq.conf:/etc/dnsmasq.conf:ro
+      - ./dnsmasq-hosts:/etc/dnsmasq-hosts:ro
+    restart: unless-stopped
+    networks:
+      - music-lab-net
+
+volumes:
+  pihole_config:
+  pihole_dnsmasq:
+
+networks:
+  music-lab-net:
+    driver: bridge
